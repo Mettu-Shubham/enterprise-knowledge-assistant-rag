@@ -3,12 +3,12 @@ __pycache__/
 .env
 venv/
 node_modules/
-chroma_db/
+data/
+raw/
 .idea/
 
 # Vector DB (IMPORTANT)
-chroma_db/
+
 vector_store/
 
 # Optional (if large data)
- data/
