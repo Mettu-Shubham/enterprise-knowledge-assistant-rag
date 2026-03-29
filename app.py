@@ -29,6 +29,10 @@ def main():
     print("\nANSWER:\n")
     print(answer)
 
+    chunks = split_text_with_metadata(text, "sample.pdf")
+
+    print(chunks[0])
+
 
 if __name__ == "__main__":
     main()

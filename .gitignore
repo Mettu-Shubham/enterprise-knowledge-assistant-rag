@@ -5,3 +5,10 @@ venv/
 node_modules/
 chroma_db/
 .idea/
+
+# Vector DB (IMPORTANT)
+chroma_db/
+vector_store/
+
+# Optional (if large data)
+ data/

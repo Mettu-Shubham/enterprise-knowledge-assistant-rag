@@ -1,8 +1,8 @@
-#document loading 
+# document loading
 import os
 import pdfplumber
 from docx import Document as DocxDocument
-from langchain.schema import Document
+from src.processing.text_splitter import split_text_with_metadata
 
 
 class DocumentLoader:
@@ -12,24 +12,24 @@ class DocumentLoader:
 
     def load_documents(self):
         """
-        Loads all supported documents from data/raw
+        Loads and chunks all supported documents
         Supported formats: PDF, DOCX, TXT
         """
-        documents = []
+        all_chunks = []
 
         for file in os.listdir(self.data_path):
             file_path = os.path.join(self.data_path, file)
 
             if file.endswith(".pdf"):
-                documents.extend(self.load_pdf(file_path))
+                all_chunks.extend(self.load_pdf(file_path))
 
             elif file.endswith(".docx"):
-                documents.extend(self.load_docx(file_path))
+                all_chunks.extend(self.load_docx(file_path))
 
             elif file.endswith(".txt"):
-                documents.extend(self.load_txt(file_path))
+                all_chunks.extend(self.load_txt(file_path))
 
-        return documents
+        return all_chunks
 
     def remove_reversed_words(self, text):
         words = text.split()
@@ -42,52 +42,47 @@ class DocumentLoader:
         return " ".join(cleaned)
 
     def load_pdf(self, file_path):
-        docs = []
+        all_chunks = []
 
         with pdfplumber.open(file_path) as pdf:
             for i, page in enumerate(pdf.pages):
                 text = page.extract_text()
 
                 if text:
-                    text =self.remove_reversed_words(text)
-                    docs.append(
-                        Document(
-                            page_content=text,
-                            metadata={
-                                "source": file_path,
-                                "page": i + 1
-                            }
-                        )
+                    text = self.remove_reversed_words(text)
+
+                    chunks = split_text_with_metadata(
+                        text,
+                        source=os.path.basename(file_path)
                     )
 
-        return docs
+                    # add page info to metadata
+                    for chunk in chunks:
+                        chunk["metadata"]["page"] = i + 1
+
+                    all_chunks.extend(chunks)
+
+        return all_chunks
 
     def load_docx(self, file_path):
-        docs = []
         doc = DocxDocument(file_path)
 
         full_text = "\n".join([para.text for para in doc.paragraphs])
 
-        docs.append(
-            Document(
-                page_content=full_text,
-                metadata={"source": file_path}
-            )
+        chunks = split_text_with_metadata(
+            full_text,
+            source=os.path.basename(file_path)
         )
 
-        return docs
+        return chunks
 
     def load_txt(self, file_path):
-        docs = []
-
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
 
-        docs.append(
-            Document(
-                page_content=text,
-                metadata={"source": file_path}
-            )
+        chunks = split_text_with_metadata(
+            text,
+            source=os.path.basename(file_path)
         )
 
-        return docs
+        return chunks

@@ -1,39 +1,44 @@
-#dat base to store embed
+# database to store embeddings
 import os
 from langchain_community.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings
 
 
 class ChromaStore:
 
-    def __init__(self, persist_directory="vector_store"):
-
+    def __init__(self, persist_directory="vectorstore"):
         self.persist_directory = persist_directory
+        self.vectordb = None
 
-        self.embedding_model = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
-        )
-
-    def get_vector_store(self, chunks=None):
+    def create_or_load_db(self, texts=None, embeddings=None, metadatas=None):
         """
-        Load existing DB or create a new one
+        Create a new vector DB or load existing one
         """
 
+        # Load existing DB
         if os.path.exists(self.persist_directory):
-
-            vectordb = Chroma(
-                persist_directory=self.persist_directory,
-                embedding_function=self.embedding_model
-            )
-
-        else:
-
-            vectordb = Chroma.from_documents(
-                documents=chunks,
-                embedding=self.embedding_model,
+            self.vectordb = Chroma(
                 persist_directory=self.persist_directory
             )
 
-            vectordb.persist()
+        # Create new DB
+        else:
+            self.vectordb = Chroma.from_embeddings(
+                texts=texts,
+                embeddings=embeddings,
+                metadatas=metadatas,
+                persist_directory=self.persist_directory
+            )
 
-        return vectordb
+            self.vectordb.persist()
+
+        return self.vectordb
+
+    def similarity_search(self, query_embedding, k=5):
+        """
+        Perform similarity search using query embedding
+        """
+        results = self.vectordb.similarity_search_by_vector(
+            query_embedding,
+            k=k
+        )
+        return results
