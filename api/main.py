@@ -36,15 +36,13 @@ llm = LLMClient()
 
 @app.post("/query")
 def query_rag(request: QueryRequest):
+    query = request.query
 
-    context_chunks = retriever.retrieve(request.question)
+    documents = retriever.retrieve(query)
 
-    answer = llm.generate_answer(
-        request.question,
-        context_chunks
-    )
+    result = llm.generate_answer(query, documents)
 
     return {
-        "question": request.question,
-        "answer": answer
+        "answer": result["answer"],
+        "sources": result["sources"]
     }

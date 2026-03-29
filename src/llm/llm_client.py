@@ -1,25 +1,17 @@
-#llm_
-import ollama
-
-
 class LLMClient:
 
-    def __init__(self, model="llama3"):
-        """
-        Initialize Ollama model
-        """
-        self.model = model
+    def __init__(self, model_name="llama3"):
+        self.model_name = model_name
 
-    def generate_answer(self, query, context_chunks):
+    def generate_answer(self, query, documents):
         """
-        Generate answer using retrieved context
+        Generate answer with sources
         """
 
-        # Combine retrieved chunks into context
-        context = "\n\n".join([chunk.page_content for chunk in context_chunks])
+        context = "\n\n".join([doc["content"] for doc in documents])
 
         prompt = f"""
-You are an assistant that answers questions using the provided context.
+Answer the question using the context below.
 
 Context:
 {context}
@@ -27,14 +19,27 @@ Context:
 Question:
 {query}
 
-Answer clearly and concisely based only on the context.
+Answer:
 """
 
-        response = ollama.chat(
-            model=self.model,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
+        # Replace this with your actual LLM call
+        response = f"(Mock Answer) Based on context: {query}"
 
-        return response["message"]["content"]
+        # Extract sources
+        sources = []
+        for doc in documents:
+            meta = doc["metadata"]
+
+            source_str = f"{meta.get('source', 'unknown')}"
+
+            if "page" in meta:
+                source_str += f" (Page {meta['page']})"
+
+            source_str += f" [Chunk {meta.get('chunk_id', '-')}]"
+
+            sources.append(source_str)
+
+        return {
+            "answer": response,
+            "sources": list(set(sources))  # remove duplicates
+        }
