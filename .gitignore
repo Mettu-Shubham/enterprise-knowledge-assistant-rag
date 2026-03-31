@@ -7,7 +7,7 @@ node_modules/
 .idea/
 
 # Runtime vector database
-vectorstore/
+/vectorstore/
 
 # Optional local documents/data
 data/
