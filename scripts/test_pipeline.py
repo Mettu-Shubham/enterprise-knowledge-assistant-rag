@@ -1,46 +1,65 @@
 from src.ingestion.document_loader import DocumentLoader
 from src.embeddings.embedder import Embedder
+from src.llm.llm_client import LLMClient
+from src.retrieval.retriever import Retriever
 from src.vectorstore.chroma_store import ChromaStore
 
 
 def test_pipeline():
-    print("🔹 Loading documents...")
+    print("Loading documents...")
     loader = DocumentLoader("data/raw")
     chunks = loader.load_documents()
 
-    print(f"✅ Total chunks created: {len(chunks)}")
+    print(f"Total chunks created: {len(chunks)}")
+    if not chunks:
+        print("No chunks found in data/raw.")
+        return
 
-    print("\n🔹 Sample chunk:")
+    print("\nSample chunk:")
     print(chunks[0])
 
-    print("\n🔹 Generating embeddings...")
+    print("\nGenerating embeddings...")
     embedder = Embedder()
-    embeddings, texts, metadatas = embedder.embed_documents(chunks)
+    texts, metadatas = embedder.prepare_chunks(chunks)
+    embeddings = embedder.embed_documents(texts)
+    print(f"Embeddings created: {len(embeddings)}")
 
-    print(f"✅ Embeddings created: {len(embeddings)}")
-
-    print("\n🔹 Creating vector DB...")
+    print("\nCreating vector DB...")
     store = ChromaStore()
-
-    vectordb = store.create_or_load_db(
+    store.create_or_load_db(
         texts=texts,
-        embeddings=embeddings,
-        metadatas=metadatas
+        metadatas=metadatas,
+        embedding_function=embedder,
+        rebuild=True
     )
+    print("Vector DB ready")
 
-    print("✅ Vector DB ready")
+    print("\nTesting retrieval...")
+    query = "What is the code of ethics?"
+    retriever = Retriever(store, k=3)
+    results = retriever.retrieve(query)
+    llm = LLMClient()
 
-    print("\n🔹 Testing retrieval...")
-    query = "What is the document about?"
-    query_embedding = embedder.embed_query(query)
+    print(f"\nRetrieved {len(results)} result(s).")
+    if not results:
+        print("No matching chunks were returned.")
+    else:
+        for i, res in enumerate(results, start=1):
+            print(f"\nResult {i}:")
+            print(res.page_content[:300])
+            print(res.metadata)
 
-    results = store.similarity_search(query_embedding, k=3)
+    result = llm.generate_answer(query, results)
 
-    print("\n✅ Retrieval Results:")
-    for i, res in enumerate(results):
-        print(f"\nResult {i+1}:")
-        print(res.page_content[:200])
-        print(res.metadata)
+    print("\nAnswer:")
+    print(result["answer"])
+
+    print("\nSources:")
+    if result["sources"]:
+        for source in result["sources"]:
+            print(source)
+    else:
+        print("No sources found.")
 
 
 if __name__ == "__main__":

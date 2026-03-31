@@ -1,4 +1,4 @@
-# document loading
+   # document loading
 import os
 import pdfplumber
 from docx import Document as DocxDocument
@@ -16,6 +16,9 @@ class DocumentLoader:
         Supported formats: PDF, DOCX, TXT
         """
         all_chunks = []
+
+        if not os.path.isdir(self.data_path):
+            return all_chunks
 
         for file in os.listdir(self.data_path):
             file_path = os.path.join(self.data_path, file)

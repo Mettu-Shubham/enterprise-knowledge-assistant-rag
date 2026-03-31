@@ -1,22 +1,30 @@
 from src.ingestion.document_loader import DocumentLoader
-from src.processing.text_splitter import TextChunker
+from src.embeddings.embedder import Embedder
 from src.vectorstore.chroma_store import ChromaStore
 from src.retrieval.retriever import Retriever
 from src.llm.llm_client import LLMClient
 
 
 def main():
-
     loader = DocumentLoader("data/raw")
-    documents = loader.load_documents()
+    chunks = loader.load_documents()
 
-    chunker = TextChunker()
-    chunks = chunker.split_documents(documents)
+    if not chunks:
+        print("No documents found in data/raw.")
+        return
+
+    embedder = Embedder()
+    texts, metadatas = embedder.prepare_chunks(chunks)
 
     store = ChromaStore()
-    vectordb = store.create_vector_store(chunks)
+    store.create_or_load_db(
+        texts=texts,
+        metadatas=metadatas,
+        embedding_function=embedder,
+        rebuild=True
+    )
 
-    retriever = Retriever(vectordb)
+    retriever = Retriever(store)
 
     llm = LLMClient()
 
@@ -28,10 +36,6 @@ def main():
 
     print("\nANSWER:\n")
     print(answer)
-
-    chunks = split_text_with_metadata(text, "sample.pdf")
-
-    print(chunks[0])
 
 
 if __name__ == "__main__":

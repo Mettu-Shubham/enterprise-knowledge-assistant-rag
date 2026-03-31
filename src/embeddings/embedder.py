@@ -10,32 +10,44 @@ class Embedder:
         """
         self.model = SentenceTransformer(model_name)
 
-    def embed_documents(self, chunks):
+    def embed_documents(self, texts):
         """
-        Convert structured chunks into embeddings
+        Convert plain texts into embeddings.
 
         Args:
-            chunks (list): List of dicts with 'content' and 'metadata'
+            texts (list[str]): Plain text chunks
 
         Returns:
-            embeddings, texts, metadatas
+            list[list[float]]
         """
-
-        if not chunks:
-            return [], [], []
-
-        texts = [chunk["content"] for chunk in chunks]
-        metadatas = [chunk["metadata"] for chunk in chunks]
+        if not texts:
+            return []
 
         embeddings = self.model.encode(
             texts,
             show_progress_bar=True
         )
 
-        return embeddings, texts, metadatas
+        if hasattr(embeddings, "tolist"):
+            embeddings = embeddings.tolist()
+        return embeddings
+
+    def prepare_chunks(self, chunks):
+        """
+        Split structured chunks into texts and metadatas for vector storage.
+        """
+        if not chunks:
+            return [], []
+
+        texts = [chunk["content"] for chunk in chunks]
+        metadatas = [chunk["metadata"] for chunk in chunks]
+        return texts, metadatas
 
     def embed_query(self, query):
         """
         Embed user query
         """
-        return self.model.encode(query)
+        embedding = self.model.encode(query)
+        if hasattr(embedding, "tolist"):
+            embedding = embedding.tolist()
+        return embedding

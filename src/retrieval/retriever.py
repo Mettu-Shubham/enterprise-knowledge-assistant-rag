@@ -9,10 +9,4 @@ class Retriever:
         """
         Retrieve top-k relevant chunks for a query
         """
-
-        results = self.vector_store.similarity_search(
-            query,
-            k=self.k
-        )
-
-        return results
+        return self.vector_store.similarity_search(query, k=self.k)

@@ -54,3 +54,31 @@ def split_text_with_metadata(text: str, source: str):
         })
 
     return structured_chunks
+
+
+class TextChunker:
+    """
+    Backward-compatible wrapper around the functional splitter helpers.
+    """
+
+    def __init__(self, chunk_size=500, chunk_overlap=100):
+        self.splitter = get_text_splitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap
+        )
+
+    def split_documents(self, documents, source="unknown"):
+        if not documents:
+            return []
+
+        if isinstance(documents[0], dict) and "content" in documents[0]:
+            return documents
+
+        structured_chunks = []
+
+        for index, text in enumerate(documents):
+            structured_chunks.extend(
+                split_text_with_metadata(text, f"{source}-{index}")
+            )
+
+        return structured_chunks
