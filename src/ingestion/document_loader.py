@@ -1,91 +1,133 @@
-   # document loading
 import os
 import pdfplumber
 from docx import Document as DocxDocument
+
+from src.ingestion.document_registry import DocumentRegistry
 from src.processing.text_splitter import split_text_with_metadata
 
 
 class DocumentLoader:
 
-    def __init__(self, data_path="data/raw"):
+    SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt"}
+
+    def __init__(self, data_path="data/WorldBank", registry_path="data/document_registry.json"):
         self.data_path = data_path
+        self.registry = DocumentRegistry(registry_path)
 
     def load_documents(self):
         """
-        Loads and chunks all supported documents
-        Supported formats: PDF, DOCX, TXT
+        Recursively load and chunk supported documents from nested folders.
+        Folder names directly under data_path become document domains.
         """
         all_chunks = []
+        registry_entries = []
 
         if not os.path.isdir(self.data_path):
             return all_chunks
 
-        for file in os.listdir(self.data_path):
-            file_path = os.path.join(self.data_path, file)
+        for file_path in self.discover_files():
+            registry_entry = self.registry.build_entry(file_path, self.data_path)
+            registry_entries.append(registry_entry)
 
-            if file.endswith(".pdf"):
-                all_chunks.extend(self.load_pdf(file_path))
+            extension = os.path.splitext(file_path)[1].lower()
 
-            elif file.endswith(".docx"):
-                all_chunks.extend(self.load_docx(file_path))
+            if extension == ".pdf":
+                chunks = self.load_pdf(file_path, registry_entry)
+            elif extension == ".docx":
+                chunks = self.load_docx(file_path, registry_entry)
+            elif extension == ".txt":
+                chunks = self.load_txt(file_path, registry_entry)
+            else:
+                continue
 
-            elif file.endswith(".txt"):
-                all_chunks.extend(self.load_txt(file_path))
+            all_chunks.extend(chunks)
 
+        self.registry.save(registry_entries)
         return all_chunks
+
+    def discover_files(self):
+        discovered = []
+
+        for root, _, files in os.walk(self.data_path):
+            for file_name in files:
+                extension = os.path.splitext(file_name)[1].lower()
+                if extension in self.SUPPORTED_EXTENSIONS:
+                    discovered.append(os.path.join(root, file_name))
+
+        discovered.sort()
+        return discovered
 
     def remove_reversed_words(self, text):
         words = text.split()
         cleaned = []
-        for w in words:
-            if len(w) > 6 and w[::-1].istitle():
+
+        for word in words:
+            if len(word) > 6 and word[::-1].istitle():
                 continue
-            cleaned.append(w)
+            cleaned.append(word)
 
         return " ".join(cleaned)
 
-    def load_pdf(self, file_path):
+    def load_pdf(self, file_path, registry_entry):
         all_chunks = []
 
         with pdfplumber.open(file_path) as pdf:
             for i, page in enumerate(pdf.pages):
                 text = page.extract_text()
 
-                if text:
-                    text = self.remove_reversed_words(text)
+                if not text:
+                    continue
 
-                    chunks = split_text_with_metadata(
-                        text,
-                        source=os.path.basename(file_path)
-                    )
+                text = self.remove_reversed_words(text)
+                chunks = split_text_with_metadata(
+                    text,
+                    source=registry_entry["source"]
+                )
 
-                    # add page info to metadata
-                    for chunk in chunks:
-                        chunk["metadata"]["page"] = i + 1
+                for chunk in chunks:
+                    chunk["metadata"].update({
+                        "domain": registry_entry["domain"],
+                        "relative_path": registry_entry["relative_path"],
+                        "file_type": registry_entry["file_type"],
+                        "page": i + 1,
+                    })
 
-                    all_chunks.extend(chunks)
+                all_chunks.extend(chunks)
 
         return all_chunks
 
-    def load_docx(self, file_path):
+    def load_docx(self, file_path, registry_entry):
         doc = DocxDocument(file_path)
-
         full_text = "\n".join([para.text for para in doc.paragraphs])
 
         chunks = split_text_with_metadata(
             full_text,
-            source=os.path.basename(file_path)
+            source=registry_entry["source"]
         )
+
+        for chunk in chunks:
+            chunk["metadata"].update({
+                "domain": registry_entry["domain"],
+                "relative_path": registry_entry["relative_path"],
+                "file_type": registry_entry["file_type"],
+            })
 
         return chunks
 
-    def load_txt(self, file_path):
+    def load_txt(self, file_path, registry_entry):
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
 
         chunks = split_text_with_metadata(
             text,
-            source=os.path.basename(file_path)
+            source=registry_entry["source"]
         )
+
+        for chunk in chunks:
+            chunk["metadata"].update({
+                "domain": registry_entry["domain"],
+                "relative_path": registry_entry["relative_path"],
+                "file_type": registry_entry["file_type"],
+            })
 
         return chunks

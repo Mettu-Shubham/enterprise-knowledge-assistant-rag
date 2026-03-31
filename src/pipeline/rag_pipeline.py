@@ -18,7 +18,10 @@ class RAGPipeline:
         llm_client=None
     ):
         self.settings = settings
-        self.loader = loader or DocumentLoader(settings.data_path)
+        self.loader = loader or DocumentLoader(
+            settings.data_path,
+            settings.registry_path
+        )        
         self.embedder = embedder or Embedder(
             settings.embedding_model,
             local_files_only=settings.embedding_local_only
