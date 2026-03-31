@@ -1,44 +1,26 @@
-from src.ingestion.document_loader import DocumentLoader
-from src.embeddings.embedder import Embedder
-from src.llm.llm_client import LLMClient
-from src.retrieval.retriever import Retriever
-from src.vectorstore.chroma_store import ChromaStore
+from src.config.settings import get_settings
+from src.pipeline.rag_pipeline import RAGPipeline
 
 
 def test_pipeline():
+    settings = get_settings()
+    pipeline = RAGPipeline(settings)
+
     print("Loading documents...")
-    loader = DocumentLoader("data/raw")
-    chunks = loader.load_documents()
+    chunks = pipeline.build_index(rebuild=True)
 
     print(f"Total chunks created: {len(chunks)}")
     if not chunks:
-        print("No chunks found in data/raw.")
+        print(f"No chunks found in {settings.data_path}.")
         return
 
     print("\nSample chunk:")
     print(chunks[0])
-
-    print("\nGenerating embeddings...")
-    embedder = Embedder()
-    texts, metadatas = embedder.prepare_chunks(chunks)
-    embeddings = embedder.embed_documents(texts)
-    print(f"Embeddings created: {len(embeddings)}")
-
-    print("\nCreating vector DB...")
-    store = ChromaStore()
-    store.create_or_load_db(
-        texts=texts,
-        metadatas=metadatas,
-        embedding_function=embedder,
-        rebuild=True
-    )
-    print("Vector DB ready")
+    print("\nVector DB ready")
 
     print("\nTesting retrieval...")
     query = "What is the code of ethics?"
-    retriever = Retriever(store, k=3)
-    results = retriever.retrieve(query)
-    llm = LLMClient()
+    results = pipeline.retriever.retrieve(query)
 
     print(f"\nRetrieved {len(results)} result(s).")
     if not results:
@@ -49,7 +31,7 @@ def test_pipeline():
             print(res.page_content[:300])
             print(res.metadata)
 
-    result = llm.generate_answer(query, results)
+    result = pipeline.ask(query)
 
     print("\nAnswer:")
     print(result["answer"])
