@@ -15,10 +15,6 @@ class DocumentLoader:
         self.registry = DocumentRegistry(registry_path)
 
     def load_documents(self):
-        """
-        Recursively load and chunk supported documents from nested folders.
-        Also compares current files with previous registry state.
-        """
         all_chunks = []
 
         if not os.path.isdir(self.data_path):
@@ -92,6 +88,7 @@ class DocumentLoader:
                 for chunk in chunks:
                     chunk["metadata"].update({
                         "domain": registry_entry["domain"],
+                        "classification": registry_entry["classification"],
                         "relative_path": registry_entry["relative_path"],
                         "file_type": registry_entry["file_type"],
                         "page": i + 1,
@@ -113,6 +110,7 @@ class DocumentLoader:
         for chunk in chunks:
             chunk["metadata"].update({
                 "domain": registry_entry["domain"],
+                "classification": registry_entry["classification"],
                 "relative_path": registry_entry["relative_path"],
                 "file_type": registry_entry["file_type"],
             })
@@ -131,6 +129,7 @@ class DocumentLoader:
         for chunk in chunks:
             chunk["metadata"].update({
                 "domain": registry_entry["domain"],
+                "classification": registry_entry["classification"],
                 "relative_path": registry_entry["relative_path"],
                 "file_type": registry_entry["file_type"],
             })

@@ -40,13 +40,18 @@ class DocumentRegistry:
     def build_entry(self, absolute_path, root_path):
         stat = os.stat(absolute_path)
         relative_path = os.path.relpath(absolute_path, root_path).replace("\\", "/")
-        domain = relative_path.split("/")[0] if "/" in relative_path else "uncategorized"
+        path_parts = relative_path.split("/")
+
+        domain = path_parts[0] if len(path_parts) > 0 else "uncategorized"
+        classification = path_parts[1] if len(path_parts) > 1 else "public"
+
         file_name = os.path.basename(absolute_path)
         extension = os.path.splitext(file_name)[1].lower().lstrip(".")
 
         return {
             "source": file_name,
             "domain": domain,
+            "classification": classification,
             "relative_path": relative_path,
             "absolute_path": absolute_path,
             "file_type": extension,
