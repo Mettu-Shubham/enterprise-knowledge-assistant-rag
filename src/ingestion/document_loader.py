@@ -17,17 +17,20 @@ class DocumentLoader:
     def load_documents(self):
         """
         Recursively load and chunk supported documents from nested folders.
-        Folder names directly under data_path become document domains.
+        Also compares current files with previous registry state.
         """
         all_chunks = []
-        registry_entries = []
 
         if not os.path.isdir(self.data_path):
             return all_chunks
 
+        previous_registry = self.registry.load()
+        previous_documents = previous_registry.get("documents", [])
+
+        current_documents = []
         for file_path in self.discover_files():
             registry_entry = self.registry.build_entry(file_path, self.data_path)
-            registry_entries.append(registry_entry)
+            current_documents.append(registry_entry)
 
             extension = os.path.splitext(file_path)[1].lower()
 
@@ -42,7 +45,9 @@ class DocumentLoader:
 
             all_chunks.extend(chunks)
 
-        self.registry.save(registry_entries)
+        changes = self.registry.detect_changes(previous_documents, current_documents)
+        self.registry.save(current_documents, changes=changes)
+
         return all_chunks
 
     def discover_files(self):
