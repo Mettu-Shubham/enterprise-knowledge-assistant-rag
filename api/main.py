@@ -13,7 +13,9 @@ pipeline = RAGPipeline(settings)
 
 class QueryRequest(BaseModel):
     question: str
+    role: str = "client"
     domain: str | None = None
+
 
 @app.post("/query")
 def query_rag(request: QueryRequest):
@@ -25,9 +27,15 @@ def query_rag(request: QueryRequest):
             detail=f"No documents found in {settings.data_path}."
         )
 
-    result = pipeline.ask(request.question, domain=request.domain)
+    result = pipeline.ask(
+        request.question,
+        role=request.role,
+        domain=request.domain
+    )
 
     return {
         "answer": result["answer"],
-        "sources": result["sources"]
+        "sources": result["sources"],
+        "role": request.role,
+        "domain": request.domain
     }

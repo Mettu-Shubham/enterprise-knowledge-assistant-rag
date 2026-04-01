@@ -57,7 +57,7 @@ class RAGPipeline:
     def is_ready(self):
         return self.retriever is not None
 
-    def ask(self, question: str, domain: str | None = None):
+    def ask(self, question: str, role: str = "client", domain: str | None = None):
         self.ensure_index()
         if self.retriever is None:
             return {
@@ -65,5 +65,5 @@ class RAGPipeline:
                 "sources": []
             }
 
-        documents = self.retriever.retrieve(question, domain=domain)
+        documents = self.retriever.retrieve(question, role=role, domain=domain)
         return self.llm_client.generate_answer(question, documents)

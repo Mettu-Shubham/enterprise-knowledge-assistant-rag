@@ -17,10 +17,6 @@ class ChromaStore:
         embedding_function=None,
         rebuild=False
     ):
-        """
-        Create a new vector DB or load an existing one.
-        Inserts documents in batches to avoid Chroma batch-size errors.
-        """
         db_file = os.path.join(self.persist_directory, "chroma.sqlite3")
 
         if rebuild and os.path.isdir(self.persist_directory):
@@ -61,16 +57,9 @@ class ChromaStore:
 
         return self.vectordb
 
-    def similarity_search(self, query_text, k=5, domain=None):
-        """
-        Perform similarity search using query text.
-        """
-        search_filter = None
-        if domain:
-            search_filter = {"domain": domain}
-
+    def similarity_search(self, query_text, k=5, filters=None):
         return self.vectordb.similarity_search(
             query_text,
             k=k,
-            filter=search_filter
+            filter=filters
         )
