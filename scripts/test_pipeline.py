@@ -5,6 +5,7 @@ from src.pipeline.rag_pipeline import RAGPipeline
 def test_pipeline():
     settings = get_settings()
     pipeline = RAGPipeline(settings)
+    domain = "govt_policy"
 
     print("Loading documents...")
     chunks = pipeline.build_index(rebuild=True)
@@ -18,9 +19,9 @@ def test_pipeline():
     print(chunks[0])
     print("\nVector DB ready")
 
-    print("\nTesting retrieval...")
+    print(f"\nTesting retrieval in domain: {domain}")
     query = "What is the code of ethics?"
-    results = pipeline.retriever.retrieve(query)
+    results = pipeline.retriever.retrieve(query, domain=domain)
 
     print(f"\nRetrieved {len(results)} result(s).")
     if not results:
@@ -31,7 +32,7 @@ def test_pipeline():
             print(res.page_content[:300])
             print(res.metadata)
 
-    result = pipeline.ask(query)
+    result = pipeline.ask(query, domain=domain)
 
     print("\nAnswer:")
     print(result["answer"])

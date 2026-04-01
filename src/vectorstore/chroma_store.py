@@ -61,8 +61,16 @@ class ChromaStore:
 
         return self.vectordb
 
-    def similarity_search(self, query_text, k=5):
+    def similarity_search(self, query_text, k=5, domain=None):
         """
         Perform similarity search using query text.
         """
-        return self.vectordb.similarity_search(query_text, k=k)
+        search_filter = None
+        if domain:
+            search_filter = {"domain": domain}
+
+        return self.vectordb.similarity_search(
+            query_text,
+            k=k,
+            filter=search_filter
+        )
