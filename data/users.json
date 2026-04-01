@@ -1,0 +1,38 @@
+[
+  {
+    "username": "admin1",
+    "password": "admin123",
+    "role": "admin",
+    "domain": null
+  },
+  {
+    "username": "gov_emp_1",
+    "password": "gov123",
+    "role": "employee",
+    "domain": "govt_policy"
+  },
+  {
+    "username": "hr_emp_1",
+    "password": "hr123",
+    "role": "employee",
+    "domain": "hr1"
+  },
+  {
+    "username": "proc_emp_1",
+    "password": "proc123",
+    "role": "employee",
+    "domain": "procurement_operations"
+  },
+  {
+    "username": "fin_emp_1",
+    "password": "fin123",
+    "role": "employee",
+    "domain": "finance_budget"
+  },
+  {
+    "username": "client1",
+    "password": "client123",
+    "role": "client",
+    "domain": null
+  }
+]
