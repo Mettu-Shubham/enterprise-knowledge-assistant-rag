@@ -5,8 +5,12 @@ class Retriever:
         self.vector_store = vector_store
         self.k = k
 
-    def retrieve(self, query):
+    def retrieve(self, query, domain=None):
         """
         Retrieve top-k relevant chunks for a query
         """
-        return self.vector_store.similarity_search(query, k=self.k)
+        return self.vector_store.similarity_search(
+            query,
+            k=self.k,
+            domain=domain
+        )
