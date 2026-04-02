@@ -4,8 +4,16 @@ import streamlit as st
 API_BASE_URL = "http://127.0.0.1:8000"
 
 
+def check_backend_health():
+    try:
+        response = requests.get(f"{API_BASE_URL}/health", timeout=20)
+        return response.status_code == 200
+    except requests.exceptions.RequestException:
+        return False
+
+
 def login(username, password):
-    response = requests.post(
+    return requests.post(
         f"{API_BASE_URL}/login",
         json={
             "username": username,
@@ -13,11 +21,10 @@ def login(username, password):
         },
         timeout=60
     )
-    return response
 
 
 def ask_question(username, password, question):
-    response = requests.post(
+    return requests.post(
         f"{API_BASE_URL}/query",
         json={
             "username": username,
@@ -26,18 +33,21 @@ def ask_question(username, password, question):
         },
         timeout=300
     )
-    return response
 
 
 def init_session():
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-    if "user" not in st.session_state:
-        st.session_state.user = None
-    if "username" not in st.session_state:
-        st.session_state.username = ""
-    if "password" not in st.session_state:
-        st.session_state.password = ""
+    defaults = {
+        "logged_in": False,
+        "user": None,
+        "username": "",
+        "password": "",
+        "last_answer": None,
+        "last_sources": [],
+        "question_input": ""
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
 
 
 def logout():
@@ -45,100 +55,256 @@ def logout():
     st.session_state.user = None
     st.session_state.username = ""
     st.session_state.password = ""
+    st.session_state.last_answer = None
+    st.session_state.last_sources = []
+    st.session_state.question_input = ""
+
+
+def render_sidebar():
+    st.sidebar.title("Access Overview")
+    st.sidebar.markdown(
+        """
+**Admin**
+- All domains
+- Public, internal, confidential
+
+**Employee**
+- Public documents
+- Internal documents from assigned domain
+- No confidential access
+
+**Client**
+- Public documents only
+"""
+    )
+
+    st.sidebar.divider()
+    st.sidebar.caption("Demo Accounts")
+    st.sidebar.code(
+        "admin1 / admin123\n"
+        "gov_emp_1 / gov123\n"
+        "hr_emp_1 / hr123\n"
+        "client1 / client123"
+    )
+
+    st.sidebar.divider()
+    backend_ok = check_backend_health()
+    if backend_ok:
+        st.sidebar.success("Backend connected")
+    else:
+        st.sidebar.error("Backend unavailable")
 
 
 def render_login():
-    st.title("Enterprise Knowledge Assistant")
-    st.subheader("Login")
+    st.markdown(
+        """
+<style>
+.hero-card {
+    padding: 1.4rem 1.2rem;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #eff6ff 0%, #ffffff 55%, #ecfeff 100%);
+    border: 1px solid #dbeafe;
+    margin-bottom: 1rem;
+}
+.info-card {
+    padding: 1rem;
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+</style>
+""",
+        unsafe_allow_html=True
+    )
 
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+    st.markdown(
+        """
+<div class="hero-card">
+  <h1 style="margin-bottom:0.3rem;">Enterprise Knowledge Assistant</h1>
+  <p style="margin:0; color:#334155;">
+    Secure, role-aware querying over World Bank knowledge domains with grounded answers and source citations.
+  </p>
+</div>
+""",
+        unsafe_allow_html=True
+    )
 
-    if st.button("Login"):
-        if not username or not password:
-            st.error("Enter both username and password.")
-            return
+    col1, col2 = st.columns([1.2, 1])
 
-        try:
-            response = login(username, password)
-            if response.status_code == 200:
-                payload = response.json()
-                st.session_state.logged_in = True
-                st.session_state.user = payload["user"]
-                st.session_state.username = username
-                st.session_state.password = password
-                st.success("Login successful.")
-                st.rerun()
-            else:
-                try:
-                    detail = response.json().get("detail", "Login failed.")
-                except Exception:
-                    detail = "Login failed."
-                st.error(detail)
-        except requests.exceptions.RequestException as exc:
-            st.error(f"Could not connect to backend: {exc}")
+    with col1:
+        st.subheader("Login")
+        username = st.text_input("Username", placeholder="Enter your username")
+        password = st.text_input("Password", type="password", placeholder="Enter your password")
+
+        login_clicked = st.button("Login", use_container_width=True)
+
+        if login_clicked:
+            if not username or not password:
+                st.error("Enter both username and password.")
+                return
+
+            try:
+                response = login(username, password)
+                if response.status_code == 200:
+                    payload = response.json()
+                    st.session_state.logged_in = True
+                    st.session_state.user = payload["user"]
+                    st.session_state.username = username
+                    st.session_state.password = password
+                    st.success("Login successful.")
+                    st.rerun()
+                else:
+                    try:
+                        detail = response.json().get("detail", "Login failed.")
+                    except Exception:
+                        detail = "Login failed."
+                    st.error(detail)
+            except requests.exceptions.RequestException as exc:
+                st.error(f"Could not connect to backend: {exc}")
+
+    with col2:
+        st.markdown(
+            """
+<div class="info-card">
+  <h3 style="margin-top:0;">How Access Works</h3>
+  <p><strong>Admin:</strong> full access across all domains and classifications.</p>
+  <p><strong>Employee:</strong> public docs plus internal docs from their own domain.</p>
+  <p><strong>Client:</strong> public docs only.</p>
+</div>
+""",
+            unsafe_allow_html=True
+        )
+
+
+def render_user_banner(user):
+    role = user["role"]
+    domain = user.get("domain") or "All domains"
+
+    role_color = {
+        "admin": "#7c2d12",
+        "employee": "#1d4ed8",
+        "client": "#166534"
+    }.get(role, "#334155")
+
+    bg_color = {
+        "admin": "#fff7ed",
+        "employee": "#eff6ff",
+        "client": "#f0fdf4"
+    }.get(role, "#f8fafc")
+
+    st.markdown(
+        f"""
+<div style="
+    padding: 1rem 1.1rem;
+    border-radius: 16px;
+    background: {bg_color};
+    border: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
+    <div>
+      <div style="font-size:1.1rem; font-weight:700;">Welcome, {user['username']}</div>
+      <div style="color:#475569;">Role: <strong style="color:{role_color};">{role}</strong> | Domain: <strong>{domain}</strong></div>
+    </div>
+  </div>
+</div>
+""",
+        unsafe_allow_html=True
+    )
 
 
 def render_app():
     user = st.session_state.user
 
     st.title("Enterprise Knowledge Assistant")
-    st.caption("Role-based secure querying over organizational documents")
+    st.caption("Ask grounded questions over authorized organizational documents.")
 
-    col1, col2 = st.columns([3, 1])
+    render_user_banner(user)
 
-    with col1:
-        st.write(f"Logged in as: `{user['username']}`")
-        st.write(f"Role: `{user['role']}`")
-        st.write(f"Domain: `{user.get('domain')}`")
-
-    with col2:
-        if st.button("Logout"):
+    top_left, top_right = st.columns([4, 1])
+    with top_left:
+        st.info("Tip: The first query after startup may take longer because the backend warms up the index.")
+    with top_right:
+        if st.button("Logout", use_container_width=True):
             logout()
             st.rerun()
 
-    st.divider()
-
     question = st.text_area(
         "Ask a question",
+        key="question_input",
+        height=140,
         placeholder="Example: What is the code of ethics?"
     )
 
-    if st.button("Get Answer"):
+    ask_clicked = st.button("Get Answer", type="primary", use_container_width=True)
+
+    if ask_clicked:
         if not question.strip():
             st.warning("Enter a question first.")
-            return
+        else:
+            try:
+                with st.spinner("Retrieving answer from authorized documents..."):
+                    response = ask_question(
+                        st.session_state.username,
+                        st.session_state.password,
+                        question
+                    )
 
-        try:
-            with st.spinner("Retrieving answer..."):
-                response = ask_question(
-                    st.session_state.username,
-                    st.session_state.password,
-                    question
-                )
-
-            if response.status_code == 200:
-                payload = response.json()
-
-                st.subheader("Answer")
-                st.write(payload["answer"])
-
-                st.subheader("Sources")
-                sources = payload.get("sources", [])
-                if sources:
-                    for source in sources:
-                        st.write(f"- {source}")
+                if response.status_code == 200:
+                    payload = response.json()
+                    st.session_state.last_answer = payload["answer"]
+                    st.session_state.last_sources = payload.get("sources", [])
                 else:
-                    st.info("No sources found.")
-            else:
-                try:
-                    detail = response.json().get("detail", "Query failed.")
-                except Exception:
-                    detail = "Query failed."
-                st.error(detail)
+                    try:
+                        detail = response.json().get("detail", "Query failed.")
+                    except Exception:
+                        detail = "Query failed."
+                    st.error(detail)
 
-        except requests.exceptions.RequestException as exc:
-            st.error(f"Could not connect to backend: {exc}")
+            except requests.exceptions.RequestException as exc:
+                st.error(f"Could not connect to backend: {exc}")
+
+    if st.session_state.last_answer:
+        answer_col, source_col = st.columns([1.8, 1])
+
+        with answer_col:
+            st.subheader("Answer")
+            st.markdown(
+                f"""
+<div style="
+    padding: 1rem;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    min-height: 180px;
+">
+{st.session_state.last_answer}
+</div>
+""",
+                unsafe_allow_html=True
+            )
+
+        with source_col:
+            st.subheader("Sources")
+            if st.session_state.last_sources:
+                for source in st.session_state.last_sources:
+                    st.markdown(
+                        f"""
+<div style="
+    padding: 0.8rem;
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 0.6rem;
+    font-size: 0.95rem;
+">
+{source}
+</div>
+""",
+                        unsafe_allow_html=True
+                    )
+            else:
+                st.info("No sources found.")
 
 
 def main():
@@ -148,6 +314,7 @@ def main():
         layout="wide"
     )
     init_session()
+    render_sidebar()
 
     if not st.session_state.logged_in:
         render_login()
