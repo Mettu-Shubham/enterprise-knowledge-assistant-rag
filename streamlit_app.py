@@ -24,7 +24,7 @@ def ask_question(username, password, question):
             "password": password,
             "question": question
         },
-        timeout=120
+        timeout=300
     )
     return response
 
