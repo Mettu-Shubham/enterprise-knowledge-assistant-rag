@@ -32,19 +32,33 @@ class RAGPipeline:
         self._indexed = False
 
     def build_index(self, rebuild=False):
-        chunks = self.loader.load_documents()
-        if not chunks:
-            self.retriever = None
-            self._indexed = False
-            return []
+        load_result = self.loader.load_documents(changed_only=not rebuild)
+        chunks = load_result["chunks"]
+        self.last_changes = load_result["changes"]
 
-        texts, metadatas = self.embedder.prepare_chunks(chunks)
-        self.store.create_or_load_db(
-            texts=texts,
-            metadatas=metadatas,
-            embedding_function=self.embedder,
-            rebuild=rebuild
-        )
+        if rebuild:
+            if not chunks:
+                self.retriever = None
+                self._indexed = False
+                return []
+
+            texts, metadatas = self.embedder.prepare_chunks(chunks)
+            self.store.create_or_load_db(
+                texts=texts,
+                metadatas=metadatas,
+                embedding_function=self.embedder,
+                rebuild=True
+            )
+        else:
+            if chunks:
+                texts, metadatas = self.embedder.prepare_chunks(chunks)
+                self.store.create_or_load_db(
+                    texts=texts,
+                    metadatas=metadatas,
+                    embedding_function=self.embedder,
+                    rebuild=False
+                )
+
         self.retriever = Retriever(self.store, k=self.settings.retrieval_k)
         self._indexed = True
         return chunks
