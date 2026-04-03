@@ -7,11 +7,11 @@ def test_pipeline():
     pipeline = RAGPipeline(settings)
 
     print("Loading documents...")
-    chunks = pipeline.build_index(rebuild=True)
+    chunks = pipeline.build_index(rebuild=False)
 
-    print(f"Total chunks created: {len(chunks)}")
+    print(f"Total newly chunks processed: {len(chunks)}")
     if not chunks:
-        print(f"No chunks found in {settings.data_path}.")
+        print(f"No documents found in {settings.data_path}.")
         return
 
     role = "employee"
