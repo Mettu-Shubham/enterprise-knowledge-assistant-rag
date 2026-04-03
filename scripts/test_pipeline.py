@@ -7,31 +7,32 @@ def test_pipeline():
     pipeline = RAGPipeline(settings)
 
     print("Loading documents...")
-    chunks = pipeline.build_index(rebuild=True)
+    chunks = pipeline.build_index(rebuild=False)
 
-    print(f"Total chunks created: {len(chunks)}")
-    if not chunks:
-        print(f"No chunks found in {settings.data_path}.")
+    print(f"Total newly processed chunks: {len(chunks)}")
+
+    if not pipeline.is_ready():
+        print(f"No documents found in {settings.data_path}.")
         return
 
-    print("\nSample chunk:")
-    print(chunks[0])
+    changes = getattr(pipeline, "last_changes", {})
+    print("\nChange summary:")
+    for key in ["new", "modified", "deleted", "unchanged"]:
+        print(f"{key}: {len(changes.get(key, []))}")
+
     print("\nVector DB ready")
 
-    print("\nTesting retrieval...")
     query = "What is the code of ethics?"
-    results = pipeline.retriever.retrieve(query)
+    print(f"\nTesting retrieval: {query}")
+    results = pipeline.retriever.retrieve(query, role="admin", domain="govt_policy")
 
     print(f"\nRetrieved {len(results)} result(s).")
-    if not results:
-        print("No matching chunks were returned.")
-    else:
-        for i, res in enumerate(results, start=1):
-            print(f"\nResult {i}:")
-            print(res.page_content[:300])
-            print(res.metadata)
+    for i, res in enumerate(results, start=1):
+        print(f"\nResult {i}:")
+        print(res.page_content[:300])
+        print(res.metadata)
 
-    result = pipeline.ask(query)
+    result = pipeline.ask(query, role="admin", domain="govt_policy")
 
     print("\nAnswer:")
     print(result["answer"])
