@@ -7,10 +7,21 @@ API_BASE_URL = "http://127.0.0.1:8000"
 def check_backend_health():
     try:
         response = requests.get(f"{API_BASE_URL}/health", timeout=20)
-        return response.status_code == 200
+        if response.status_code == 200:
+            payload = response.json()
+            return {
+                "ok": True,
+                "index_ready": payload.get("index_ready", False)
+            }
+        return {
+            "ok": False,
+            "index_ready": False
+        }
     except requests.exceptions.RequestException:
-        return False
-
+        return {
+            "ok": False,
+            "index_ready": False
+        }
 
 def login(username, password):
     return requests.post(
@@ -88,12 +99,14 @@ def render_sidebar():
     )
 
     st.sidebar.divider()
-    backend_ok = check_backend_health()
-    if backend_ok:
-        st.sidebar.success("Backend connected")
+    health = check_backend_health()
+    if health["ok"]:
+        if health["index_ready"]:
+            st.sidebar.success("Backend connected and index ready")
+        else:
+            st.sidebar.warning("Backend connected, index warming up")
     else:
         st.sidebar.error("Backend unavailable")
-
 
 def render_login():
     st.markdown(

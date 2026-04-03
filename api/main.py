@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi import HTTPException
 from pydantic import BaseModel
@@ -7,10 +9,27 @@ from src.config.settings import get_settings
 from src.pipeline.rag_pipeline import RAGPipeline
 
 
-app = FastAPI(title="Enterprise Knowledge Assistant")
 settings = get_settings()
 pipeline = RAGPipeline(settings)
 auth_service = AuthService(settings.users_path)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Warm the vector index at startup so the first frontend query is faster.
+    """
+    try:
+        pipeline.ensure_index()
+    except Exception as exc:
+        print(f"Startup index warmup failed: {exc}")
+    yield
+
+
+app = FastAPI(
+    title="Enterprise Knowledge Assistant",
+    lifespan=lifespan
+)
 
 
 class LoginRequest(BaseModel):
@@ -30,7 +49,8 @@ def health_check():
         "status": "ok",
         "data_path": settings.data_path,
         "vectorstore_path": settings.vectorstore_path,
-        "users_path": settings.users_path
+        "users_path": settings.users_path,
+        "index_ready": pipeline.is_ready()
     }
 
 
@@ -62,7 +82,8 @@ def query_rag(request: QueryRequest):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password.")
 
-    pipeline.ensure_index()
+    if not pipeline.is_ready():
+        pipeline.ensure_index()
 
     if not pipeline.is_ready():
         raise HTTPException(
