@@ -14,21 +14,49 @@ class DocumentLoader:
         self.data_path = data_path
         self.registry = DocumentRegistry(registry_path)
 
-    def load_documents(self):
+    def load_documents(self, changed_only=False):
         """
         Recursively load and chunk supported documents from nested folders.
-        Folder names directly under data_path become document domains.
+
+        If changed_only=True:
+        - process only new and modified files
+        - skip unchanged files
+        - still track deleted files in registry
         """
         all_chunks = []
-        registry_entries = []
 
         if not os.path.isdir(self.data_path):
-            return all_chunks
+            return {
+                "chunks": [],
+                "changes": {
+                    "new": [],
+                    "modified": [],
+                    "deleted": [],
+                    "unchanged": [],
+                },
+                "documents": [],
+            }
 
+        previous_registry = self.registry.load()
+        previous_documents = previous_registry.get("documents", [])
+
+        current_documents = []
         for file_path in self.discover_files():
             registry_entry = self.registry.build_entry(file_path, self.data_path)
-            registry_entries.append(registry_entry)
+            current_documents.append(registry_entry)
 
+        changes = self.registry.detect_changes(previous_documents, current_documents)
+
+        if changed_only:
+            allowed_paths = set(changes["new"] + changes["modified"])
+        else:
+            allowed_paths = {doc["relative_path"] for doc in current_documents}
+
+        for registry_entry in current_documents:
+            if registry_entry["relative_path"] not in allowed_paths:
+                continue
+
+            file_path = registry_entry["absolute_path"]
             extension = os.path.splitext(file_path)[1].lower()
 
             if extension == ".pdf":
@@ -42,8 +70,13 @@ class DocumentLoader:
 
             all_chunks.extend(chunks)
 
-        self.registry.save(registry_entries)
-        return all_chunks
+        self.registry.save(current_documents, changes=changes)
+
+        return {
+            "chunks": all_chunks,
+            "changes": changes,
+            "documents": current_documents,
+        }
 
     def discover_files(self):
         discovered = []
@@ -87,6 +120,7 @@ class DocumentLoader:
                 for chunk in chunks:
                     chunk["metadata"].update({
                         "domain": registry_entry["domain"],
+                        "classification": registry_entry["classification"],
                         "relative_path": registry_entry["relative_path"],
                         "file_type": registry_entry["file_type"],
                         "page": i + 1,
@@ -108,6 +142,7 @@ class DocumentLoader:
         for chunk in chunks:
             chunk["metadata"].update({
                 "domain": registry_entry["domain"],
+                "classification": registry_entry["classification"],
                 "relative_path": registry_entry["relative_path"],
                 "file_type": registry_entry["file_type"],
             })
@@ -126,6 +161,7 @@ class DocumentLoader:
         for chunk in chunks:
             chunk["metadata"].update({
                 "domain": registry_entry["domain"],
+                "classification": registry_entry["classification"],
                 "relative_path": registry_entry["relative_path"],
                 "file_type": registry_entry["file_type"],
             })

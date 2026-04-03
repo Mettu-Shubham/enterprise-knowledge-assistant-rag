@@ -10,4 +10,10 @@ node_modules/
 /vectorstore/
 
 # Optional local documents/data
-data/
+# Optional local datasets
+data/WorldBank/
+data/document_registry.json
+
+# Keep auth config tracked
+!data/
+!data/users.json
