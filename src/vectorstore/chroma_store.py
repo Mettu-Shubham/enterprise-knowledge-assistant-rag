@@ -10,6 +10,20 @@ class ChromaStore:
         self.vectordb = None
         self.batch_size = batch_size
 
+    def has_existing_db(self):
+        db_file = os.path.join(self.persist_directory, "chroma.sqlite3")
+        return os.path.exists(db_file)
+
+    def load_existing_db(self, embedding_function=None):
+        if not self.has_existing_db():
+            return None
+
+        self.vectordb = Chroma(
+            embedding_function=embedding_function,
+            persist_directory=self.persist_directory
+        )
+        return self.vectordb
+
     def create_or_load_db(
         self,
         texts=None,
@@ -28,6 +42,11 @@ class ChromaStore:
                 embedding_function=embedding_function,
                 persist_directory=self.persist_directory
             )
+
+            # Add only newly processed chunks, if any
+            if texts:
+                self._add_in_batches(texts, metadatas)
+
             return self.vectordb
 
         if not texts:
@@ -45,7 +64,18 @@ class ChromaStore:
             persist_directory=self.persist_directory
         )
 
-        for start in range(first_end, len(texts), self.batch_size):
+        self._add_in_batches(
+            texts[first_end:],
+            metadatas[first_end:] if metadatas else None
+        )
+
+        return self.vectordb
+
+    def _add_in_batches(self, texts, metadatas=None):
+        if not texts:
+            return
+
+        for start in range(0, len(texts), self.batch_size):
             end = start + self.batch_size
             batch_texts = texts[start:end]
             batch_metadatas = metadatas[start:end] if metadatas else None
