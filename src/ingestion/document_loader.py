@@ -14,11 +14,28 @@ class DocumentLoader:
         self.data_path = data_path
         self.registry = DocumentRegistry(registry_path)
 
-    def load_documents(self):
+    def load_documents(self, changed_only=False):
+        """
+        Recursively load and chunk supported documents from nested folders.
+
+        If changed_only=True:
+        - process only new and modified files
+        - skip unchanged files
+        - still track deleted files in registry
+        """
         all_chunks = []
 
         if not os.path.isdir(self.data_path):
-            return all_chunks
+            return {
+                "chunks": [],
+                "changes": {
+                    "new": [],
+                    "modified": [],
+                    "deleted": [],
+                    "unchanged": [],
+                },
+                "documents": [],
+            }
 
         previous_registry = self.registry.load()
         previous_documents = previous_registry.get("documents", [])
@@ -28,6 +45,18 @@ class DocumentLoader:
             registry_entry = self.registry.build_entry(file_path, self.data_path)
             current_documents.append(registry_entry)
 
+        changes = self.registry.detect_changes(previous_documents, current_documents)
+
+        if changed_only:
+            allowed_paths = set(changes["new"] + changes["modified"])
+        else:
+            allowed_paths = {doc["relative_path"] for doc in current_documents}
+
+        for registry_entry in current_documents:
+            if registry_entry["relative_path"] not in allowed_paths:
+                continue
+
+            file_path = registry_entry["absolute_path"]
             extension = os.path.splitext(file_path)[1].lower()
 
             if extension == ".pdf":
@@ -41,10 +70,13 @@ class DocumentLoader:
 
             all_chunks.extend(chunks)
 
-        changes = self.registry.detect_changes(previous_documents, current_documents)
         self.registry.save(current_documents, changes=changes)
 
-        return all_chunks
+        return {
+            "chunks": all_chunks,
+            "changes": changes,
+            "documents": current_documents,
+        }
 
     def discover_files(self):
         discovered = []
