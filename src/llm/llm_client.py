@@ -4,8 +4,8 @@ import re
 
 class LLMClient:
 
-    def __init__(self, model_name="llama3"):
-        self.model_name = model_name
+    def __init__(self, model_name=None):
+        self.model_name = model_name or os.getenv("RAG_LLM_MODEL", "qwen2.5:7b")
 
     def generate_answer(self, query, documents):
         """
@@ -15,15 +15,20 @@ class LLMClient:
 
         if not normalized_documents:
             return {
-                "answer": "I could not find relevant information in the indexed documents for that question.",
+                "answer": "I could not find relevant information in the allowed documents for that question.",
                 "sources": []
             }
 
         context = "\n\n".join([doc["content"] for doc in normalized_documents])
 
         prompt = f"""
-Answer the question using the context below.
-If the context does not support the answer, say that briefly.
+You are an enterprise knowledge assistant.
+
+Answer the user's question using only the provided context.
+Write a clear and helpful answer in 2 to 4 sentences.
+Do not simply repeat the document title or the question.
+If the context is not enough, say that clearly.
+Do not invent facts outside the context.
 
 Context:
 {context}
@@ -76,7 +81,10 @@ Answer:
             client = Client(host=os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434"))
             response = client.generate(
                 model=self.model_name,
-                prompt=prompt
+                prompt=prompt,
+                options={
+                    "temperature": 0.2
+                }
             )
             return response.get("response", "").strip() or None
         except Exception:

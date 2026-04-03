@@ -85,6 +85,8 @@ class ChromaStore:
                 metadatas=batch_metadatas
             )
 
+        return self.vectordb
+
     def similarity_search(self, query_text, k=5, filters=None):
         return self.vectordb.similarity_search(
             query_text,
