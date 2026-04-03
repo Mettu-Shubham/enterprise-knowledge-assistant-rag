@@ -36,6 +36,7 @@ class RAGPipeline:
         chunks = load_result["chunks"]
         self.last_changes = load_result["changes"]
 
+        # Full rebuild mode
         if rebuild:
             if not chunks:
                 self.retriever = None
@@ -49,19 +50,33 @@ class RAGPipeline:
                 embedding_function=self.embedder,
                 rebuild=True
             )
-        else:
-            if chunks:
-                texts, metadatas = self.embedder.prepare_chunks(chunks)
-                self.store.create_or_load_db(
-                    texts=texts,
-                    metadatas=metadatas,
-                    embedding_function=self.embedder,
-                    rebuild=False
-                )
+            self.retriever = Retriever(self.store, k=self.settings.retrieval_k)
+            self._indexed = True
+            return chunks
 
-        self.retriever = Retriever(self.store, k=self.settings.retrieval_k)
-        self._indexed = True
-        return chunks
+        # Incremental / normal mode
+        if chunks:
+            texts, metadatas = self.embedder.prepare_chunks(chunks)
+            self.store.create_or_load_db(
+                texts=texts,
+                metadatas=metadatas,
+                embedding_function=self.embedder,
+                rebuild=False
+            )
+            self.retriever = Retriever(self.store, k=self.settings.retrieval_k)
+            self._indexed = True
+            return chunks
+
+        # No changed chunks, but existing DB may still be available
+        existing_db = self.store.load_existing_db(embedding_function=self.embedder)
+        if existing_db is not None:
+            self.retriever = Retriever(self.store, k=self.settings.retrieval_k)
+            self._indexed = True
+            return []
+
+        self.retriever = None
+        self._indexed = False
+        return []
 
     def ensure_index(self):
         if self.retriever is None or not self._indexed:

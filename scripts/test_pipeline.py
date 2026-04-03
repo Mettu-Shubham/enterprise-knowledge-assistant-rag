@@ -9,17 +9,22 @@ def test_pipeline():
     print("Loading documents...")
     chunks = pipeline.build_index(rebuild=False)
 
-    print(f"Total newly chunks processed: {len(chunks)}")
-    if not chunks:
+    print(f"Total newly processed chunks: {len(chunks)}")
+
+    if not pipeline.is_ready():
         print(f"No documents found in {settings.data_path}.")
         return
 
-    role = "employee"
-    domain = "govt_policy"
-    query = "What is the code of ethics?"
+    changes = getattr(pipeline, "last_changes", {})
+    print("\nChange summary:")
+    for key in ["new", "modified", "deleted", "unchanged"]:
+        print(f"{key}: {len(changes.get(key, []))}")
 
-    print(f"\nTesting retrieval for role={role}, domain={domain}")
-    results = pipeline.retriever.retrieve(query, role=role, domain=domain)
+    print("\nVector DB ready")
+
+    query = "What is the code of ethics?"
+    print(f"\nTesting retrieval: {query}")
+    results = pipeline.retriever.retrieve(query, role="admin", domain="govt_policy")
 
     print(f"\nRetrieved {len(results)} result(s).")
     for i, res in enumerate(results, start=1):
@@ -27,7 +32,7 @@ def test_pipeline():
         print(res.page_content[:300])
         print(res.metadata)
 
-    result = pipeline.ask(query, role=role, domain=domain)
+    result = pipeline.ask(query, role="admin", domain="govt_policy")
 
     print("\nAnswer:")
     print(result["answer"])
