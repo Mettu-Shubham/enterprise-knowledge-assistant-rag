@@ -1,36 +1,252 @@
-# LLM RAG Project
+# Enterprise Knowledge Assistant (Role-Aware RAG)
 
-Enterprise Knowledge Assistant prototype built with RAG, FastAPI, Chroma, and Ollama.
+A local-first enterprise document assistant implementing secure Retrieval-Augmented Generation (RAG) with role-based access control, metadata-aware retrieval, and source-grounded responses.
 
-## Current Phase
+---
 
-Phase 1 focuses on making the local prototype clean, testable, and repeatable.
+## Overview
 
-## Run Locally
+This project builds an end-to-end RAG pipeline for querying enterprise documents with strict access control. Documents are organized by domain and sensitivity, enabling secure and realistic enterprise knowledge retrieval.
 
-From the project root:
+Key features:
 
-```bash
-PYTHONPATH=. ./.venv/Scripts/python.exe scripts/test_pipeline.py
+* Recursive document ingestion
+* Metadata-aware chunking
+* Role-based retrieval filtering (RBAC)
+* Persistent vector storage (ChromaDB)
+* Local LLM generation (Ollama)
+* FastAPI backend + Streamlit frontend
+* Source citations with page references
+
+---
+
+## Architecture
+
+```
+Documents (data/WorldBank/domain/classification)
+        ↓
+Ingestion + Metadata Extraction
+        ↓
+Chunking
+        ↓
+Embeddings (Sentence Transformers)
+        ↓
+Vector DB (ChromaDB)
+        ↓
+User Authentication (FastAPI)
+        ↓
+Role-Based Retrieval Filtering
+        ↓
+LLM Generation (Ollama)
+        ↓
+Answer + Sources
 ```
 
-Start the API:
+---
 
-```bash
-PYTHONPATH=. ./.venv/Scripts/python.exe -m uvicorn api.main:app --reload
+## Project Structure
+
+```
+.
+├── api/
+│   └── main.py
+├── data/
+│   ├── users.json
+│   └── WorldBank/
+│       ├── govt_policy/
+│       │   ├── public/
+│       │   ├── internal/
+│       │   └── confidential/
+│       ├── hr1/
+│       │   ├── public/
+│       │   ├── internal/
+│       │   └── confidential/
+│       ├── procurement_operations/
+│       │   ├── public/
+│       │   ├── internal/
+│       │   └── confidential/
+│       └── finance_budget/
+│           ├── public/
+│           ├── internal/
+│           └── confidential/
+├── scripts/
+│   ├── scan_documents.py
+│   ├── show_registry_changes.py
+│   └── test_pipeline.py
+├── src/
+│   ├── auth/
+│   │   └── auth_service.py
+│   ├── config/
+│   │   └── settings.py
+│   ├── embeddings/
+│   │   └── embedder.py
+│   ├── ingestion/
+│   │   ├── document_loader.py
+│   │   └── document_registry.py
+│   ├── llm/
+│   │   └── llm_client.py
+│   ├── pipeline/
+│   │   └── rag_pipeline.py
+│   ├── processing/
+│   │   └── text_splitter.py
+│   ├── retrieval/
+│   │   └── retriever.py
+│   └── vectorstore/
+│       └── chroma_store.py
+├── tests/
+│   ├── test_rag_pipeline.py
+│   └── test_text_splitter.py
+├── streamlit_app.py
+├── requirements.txt
+└── README.md
 ```
 
-Test the API:
+---
 
-```bash
-curl -X POST http://127.0.0.1:8000/query -H "Content-Type: application/json" -d "{\"question\":\"What is the code of ethics?\"}"
+## Dataset Structure
+
+```
+data/WorldBank/<domain>/<classification>/<file>
 ```
 
-## Run Repeatable Tests
+Domains:
 
-```bash
-PYTHONPATH=. ./.venv/Scripts/python.exe -m unittest discover -s tests -v
+* govt_policy
+* hr1
+* procurement_operations
+* finance_budget
+
+Classifications:
+
+* public
+* internal
+* confidential
+
+---
+
+## Access Model
+
+| Role     | Access Scope                        |
+| -------- | ----------------------------------- |
+| Admin    | All documents                       |
+| Employee | Public + internal (own domain only) |
+| Client   | Public only                         |
+
+---
+
+## Tech Stack
+
+* Backend: FastAPI
+* Frontend: Streamlit
+* Embeddings: Sentence Transformers
+* Vector DB: ChromaDB
+* LLM: Ollama (qwen2.5:7b, llama3)
+* PDF: pdfplumber
+* DOCX: python-docx
+
+---
+
+## Setup
+
+### Install dependencies
+
+```
+pip install -r requirements.txt
 ```
 
-By default, the embedder prefers a locally cached model first for more repeatable runs.
-Set `RAG_EMBEDDING_LOCAL_ONLY=0` if you want it to attempt a network download.
+### Start Ollama
+
+```
+ollama serve
+ollama pull qwen2.5:7b
+```
+
+### Run FastAPI
+
+```
+PYTHONPATH=. python -m uvicorn api.main:app --reload
+```
+
+### Run Streamlit
+
+```
+PYTHONPATH=. streamlit run streamlit_app.py
+```
+
+### Open UI
+
+```
+http://localhost:8501
+```
+
+---
+
+## API Endpoints
+
+### Health
+
+```
+GET /health
+```
+
+### Login
+
+```
+POST /login
+```
+
+### Query
+
+```
+POST /query
+```
+
+Example:
+
+```
+{
+  "username": "admin1",
+  "password": "admin123",
+  "question": "What is the code of ethics?"
+}
+```
+
+---
+
+## Retrieval Flow
+
+```
+User → Authentication → Role Check → Metadata Filter
+→ Vector Search → Context → LLM → Answer + Sources
+```
+
+---
+
+## Testing
+
+```
+python -m unittest tests.test_rag_pipeline
+python -m unittest tests.test_text_splitter
+```
+
+---
+
+## Limitations
+
+* Initial query latency due to warm-up
+* Basic authentication (JSON-based)
+* Limited vector lifecycle management
+* Retrieval noise on ambiguous queries
+
+---
+
+## Future Improvements
+
+* Query rewriting and reranking
+* Token-based authentication
+* Incremental vector updates
+* UI enhancements
+* Deployment support
+* multimodel implementation
+
+---
