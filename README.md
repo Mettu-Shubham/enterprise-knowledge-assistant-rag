@@ -1,22 +1,23 @@
 # Enterprise Knowledge Assistant (Role-Aware RAG)
 
-A local-first enterprise document assistant implementing secure Retrieval-Augmented Generation (RAG) with role-based access control, metadata-aware retrieval, and source-grounded responses.
+A local-first enterprise document assistant that implements secure Retrieval-Augmented Generation (RAG) with role-based access control (RBAC), metadata-aware retrieval, and source-grounded responses.
 
 ---
 
 ## Overview
 
-This project builds an end-to-end RAG pipeline for querying enterprise documents with strict access control. Documents are organized by domain and sensitivity, enabling secure and realistic enterprise knowledge retrieval.
+This project delivers an end-to-end RAG pipeline for querying enterprise documents in a secure and structured manner. Documents are organized by domain and sensitivity level, enabling controlled access and realistic enterprise knowledge retrieval.
 
-Key features:
+Key capabilities:
 
-* Recursive document ingestion
-* Metadata-aware chunking
-* Role-based retrieval filtering (RBAC)
-* Persistent vector storage (ChromaDB)
-* Local LLM generation (Ollama)
-* FastAPI backend + Streamlit frontend
-* Source citations with page references
+* Recursive ingestion of domain-structured documents
+* Metadata-aware chunking with source and page tracking
+* Persistent vector storage using ChromaDB
+* Role-based retrieval filtering (RBAC enforcement)
+* Local LLM-based answer generation via Ollama
+* FastAPI backend for authenticated querying
+* Streamlit frontend for interactive user access
+* Source attribution for explainable responses
 
 ---
 
@@ -25,21 +26,23 @@ Key features:
 ```
 Documents (data/WorldBank/domain/classification)
         ↓
-Ingestion + Metadata Extraction
+Ingestion & Metadata Extraction
         ↓
-Chunking
+Text Chunking
         ↓
-Embeddings (Sentence Transformers)
+Embedding Generation (Sentence Transformers)
         ↓
-Vector DB (ChromaDB)
+Vector Storage (ChromaDB)
         ↓
 User Authentication (FastAPI)
         ↓
 Role-Based Retrieval Filtering
         ↓
-LLM Generation (Ollama)
+Semantic Search
         ↓
-Answer + Sources
+LLM Response Generation (Ollama)
+        ↓
+Answer with Source Citations
 ```
 
 ---
@@ -49,9 +52,9 @@ Answer + Sources
 ```
 .
 ├── api/
-│   └── main.py
+│   └── main.py                    # FastAPI application (auth + query endpoints)
 ├── data/
-│   ├── users.json
+│   ├── users.json                # User credentials and roles
 │   └── WorldBank/
 │       ├── govt_policy/
 │       │   ├── public/
@@ -103,7 +106,7 @@ Answer + Sources
 
 ---
 
-## Dataset Structure
+## Dataset Organization
 
 ```
 data/WorldBank/<domain>/<classification>/<file>
@@ -122,33 +125,37 @@ Classifications:
 * internal
 * confidential
 
+This structure enables automatic metadata extraction for secure retrieval.
+
 ---
 
 ## Access Model
 
-| Role     | Access Scope                        |
-| -------- | ----------------------------------- |
-| Admin    | All documents                       |
-| Employee | Public + internal (own domain only) |
-| Client   | Public only                         |
+| Role     | Access Scope                                                 |
+| -------- | ------------------------------------------------------------ |
+| Admin    | Full access to all domains and classifications               |
+| Employee | Public documents + internal documents within assigned domain |
+| Client   | Public documents only                                        |
+
+Access control is enforced during retrieval prior to LLM invocation.
 
 ---
 
-## Tech Stack
+## Technology Stack
 
-* Backend: FastAPI
-* Frontend: Streamlit
+* Backend API: FastAPI
+* Frontend UI: Streamlit
 * Embeddings: Sentence Transformers
-* Vector DB: ChromaDB
-* LLM: Ollama (qwen2.5:7b, llama3)
-* PDF: pdfplumber
-* DOCX: python-docx
+* Vector Database: ChromaDB
+* LLM Runtime: Ollama (qwen2.5:7b, llama3)
+* PDF Processing: pdfplumber
+* DOCX Processing: python-docx
 
 ---
 
-## Setup
+## Setup and Execution
 
-### Install dependencies
+### Install Dependencies
 
 ```
 pip install -r requirements.txt
@@ -161,19 +168,19 @@ ollama serve
 ollama pull qwen2.5:7b
 ```
 
-### Run FastAPI
+### Run Backend (FastAPI)
 
 ```
 PYTHONPATH=. python -m uvicorn api.main:app --reload
 ```
 
-### Run Streamlit
+### Run Frontend (Streamlit)
 
 ```
 PYTHONPATH=. streamlit run streamlit_app.py
 ```
 
-### Open UI
+### Access Application
 
 ```
 http://localhost:8501
@@ -183,25 +190,25 @@ http://localhost:8501
 
 ## API Endpoints
 
-### Health
+### Health Check
 
 ```
 GET /health
 ```
 
-### Login
+### User Authentication
 
 ```
 POST /login
 ```
 
-### Query
+### Query Endpoint
 
 ```
 POST /query
 ```
 
-Example:
+Example Request:
 
 ```
 {
@@ -213,11 +220,11 @@ Example:
 
 ---
 
-## Retrieval Flow
+## Retrieval Workflow
 
 ```
-User → Authentication → Role Check → Metadata Filter
-→ Vector Search → Context → LLM → Answer + Sources
+User → Authentication → Role Validation → Metadata Filtering
+→ Vector Search → Context Retrieval → LLM Generation → Response + Sources
 ```
 
 ---
@@ -233,20 +240,24 @@ python -m unittest tests.test_text_splitter
 
 ## Limitations
 
-* Initial query latency due to warm-up
-* Basic authentication (JSON-based)
-* Limited vector lifecycle management
-* Retrieval noise on ambiguous queries
+* Initial query latency due to system warm-up
+* Basic authentication using JSON-based user store
+* Limited vector update/delete lifecycle
+* Retrieval noise in ambiguous or poorly structured queries
 
 ---
 
-## Future Improvements
+## Future Enhancements
 
-* Query rewriting and reranking
-* Token-based authentication
-* Incremental vector updates
-* UI enhancements
-* Deployment support
-* multimodel implementation
+* Query rewriting and semantic reranking
+* Token-based authentication and session management
+* Incremental indexing and vector synchronization
+* Improved UI with source visualization
+* Deployment-ready containerization
+* Multi-model implementation for better reasoning,response time .
 
 ---
+
+## Summary
+
+This project demonstrates a secure, enterprise-oriented RAG system that integrates semantic retrieval, metadata-driven filtering, and role-based access control. It provides a strong foundation for building scalable and secure knowledge assistants in real-world organizational environments.
