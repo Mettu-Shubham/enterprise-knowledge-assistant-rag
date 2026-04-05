@@ -9,8 +9,17 @@ class FakeLoader:
     def __init__(self, chunks):
         self.chunks = chunks
 
-    def load_documents(self):
-        return self.chunks
+    def load_documents(self, changed_only=False):
+        return {
+            "chunks": self.chunks,
+            "changes": {
+                "new": [],
+                "modified": [],
+                "deleted": [],
+                "unchanged": [],
+            },
+            "documents": [],
+        }
 
 
 class FakeEmbedder:
@@ -23,8 +32,9 @@ class FakeEmbedder:
 
 class FakeStore:
 
-    def __init__(self):
+    def __init__(self, existing_db=True):
         self.calls = []
+        self.existing_db = existing_db
 
     def create_or_load_db(self, texts=None, metadatas=None, embedding_function=None, rebuild=False):
         self.calls.append(
@@ -36,7 +46,10 @@ class FakeStore:
             }
         )
 
-    def similarity_search(self, query, k=5):
+    def load_existing_db(self, embedding_function=None):
+        return self if self.existing_db else None
+
+    def similarity_search(self, query, k=5, filters=None):
         return [
             {
                 "content": "The code of ethics explains expected ethical behavior.",
@@ -50,7 +63,7 @@ class FakeLLMClient:
     def generate_answer(self, question, documents):
         return {
             "answer": f"Answer for: {question}",
-            "sources": ["policy.pdf (Page 1) [Chunk 0]"],
+            "sources": ["policy.pdf (Page 1)"],
         }
 
 
@@ -84,7 +97,7 @@ class RAGPipelineTests(unittest.TestCase):
             settings=Settings(),
             loader=FakeLoader([]),
             embedder=FakeEmbedder(),
-            store=FakeStore(),
+            store=FakeStore(existing_db=False),
             llm_client=FakeLLMClient(),
         )
 
@@ -111,7 +124,7 @@ class RAGPipelineTests(unittest.TestCase):
         result = pipeline.ask("What is the code of ethics?")
 
         self.assertEqual(result["answer"], "Answer for: What is the code of ethics?")
-        self.assertEqual(result["sources"], ["policy.pdf (Page 1) [Chunk 0]"])
+        self.assertEqual(result["sources"], ["policy.pdf (Page 1)"])
 
 
 if __name__ == "__main__":
