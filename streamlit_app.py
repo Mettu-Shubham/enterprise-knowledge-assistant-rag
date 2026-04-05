@@ -112,18 +112,59 @@ def render_login():
     st.markdown(
         """
 <style>
+.stApp {
+    background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+    color: #e5e7eb;
+}
 .hero-card {
     padding: 1.4rem 1.2rem;
     border-radius: 18px;
-    background: linear-gradient(135deg, #eff6ff 0%, #ffffff 55%, #ecfeff 100%);
-    border: 1px solid #dbeafe;
+    background: linear-gradient(135deg, #111827 0%, #172033 55%, #1f2937 100%);
+    border: 1px solid #334155;
     margin-bottom: 1rem;
+    color: #e5e7eb;
 }
 .info-card {
     padding: 1rem;
     border-radius: 16px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: #111827;
+    border: 1px solid #334155;
+    color: #e5e7eb;
+}
+.answer-card {
+    padding: 1rem;
+    border-radius: 16px;
+    background: #111827;
+    border: 1px solid #334155;
+    min-height: 180px;
+    color: #e5e7eb;
+    line-height: 1.6;
+}
+.source-card {
+    padding: 0.8rem;
+    border-radius: 14px;
+    background: #111827;
+    border: 1px solid #334155;
+    margin-bottom: 0.6rem;
+    font-size: 0.95rem;
+    color: #e5e7eb;
+}
+.user-banner {
+    padding: 1rem 1.1rem;
+    border-radius: 16px;
+    border: 1px solid #334155;
+    margin-bottom: 1rem;
+    color: #e5e7eb;
+}
+.app-subtitle {
+    margin: 0.35rem 0 0;
+    color: #cbd5e1;
+    font-size: 1rem;
+}
+.section-label {
+    color: #cbd5e1;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
 }
 </style>
 """,
@@ -133,9 +174,10 @@ def render_login():
     st.markdown(
         """
 <div class="hero-card">
-  <h1 style="margin-bottom:0.3rem;">Enterprise Knowledge Assistant</h1>
-  <p style="margin:0; color:#334155;">
-    Secure, role-aware querying over World Bank knowledge domains with grounded answers and source citations.
+  <h1 style="margin-bottom:0.3rem; color:#f8fafc;">Enterprise Knowledge Assistant</h1>
+  <p class="app-subtitle">Secure role-aware enterprise document assistant</p>
+  <p style="margin:0.45rem 0 0; color:#cbd5e1;">
+    Query organizational knowledge with authenticated access, grounded answers, and clear source citations.
   </p>
 </div>
 """,
@@ -179,10 +221,10 @@ def render_login():
         st.markdown(
             """
 <div class="info-card">
-  <h3 style="margin-top:0;">How Access Works</h3>
-  <p><strong>Admin:</strong> full access across all domains and classifications.</p>
-  <p><strong>Employee:</strong> public docs plus internal docs from their own domain.</p>
-  <p><strong>Client:</strong> public docs only.</p>
+  <h3 style="margin-top:0; color:#f8fafc;">How Access Works</h3>
+  <p style="color:#cbd5e1;"><strong>Admin:</strong> full access across all domains and classifications.</p>
+  <p style="color:#cbd5e1;"><strong>Employee:</strong> public docs plus internal docs from their own domain.</p>
+  <p style="color:#cbd5e1;"><strong>Client:</strong> public docs only.</p>
 </div>
 """,
             unsafe_allow_html=True
@@ -194,30 +236,24 @@ def render_user_banner(user):
     domain = user.get("domain") or "All domains"
 
     role_color = {
-        "admin": "#7c2d12",
-        "employee": "#1d4ed8",
-        "client": "#166534"
-    }.get(role, "#334155")
+        "admin": "#fdba74",
+        "employee": "#93c5fd",
+        "client": "#86efac"
+    }.get(role, "#e5e7eb")
 
     bg_color = {
-        "admin": "#fff7ed",
-        "employee": "#eff6ff",
-        "client": "#f0fdf4"
-    }.get(role, "#f8fafc")
+        "admin": "#2b1a10",
+        "employee": "#14243d",
+        "client": "#0f2418"
+    }.get(role, "#111827")
 
     st.markdown(
         f"""
-<div style="
-    padding: 1rem 1.1rem;
-    border-radius: 16px;
-    background: {bg_color};
-    border: 1px solid #e2e8f0;
-    margin-bottom: 1rem;
-">
+<div class="user-banner" style="background: {bg_color};">
   <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
     <div>
-      <div style="font-size:1.1rem; font-weight:700;">Welcome, {user['username']}</div>
-      <div style="color:#475569;">Role: <strong style="color:{role_color};">{role}</strong> | Domain: <strong>{domain}</strong></div>
+      <div style="font-size:1.1rem; font-weight:700; color:#f8fafc;">Welcome, {user['username']}</div>
+      <div style="color:#cbd5e1;">Role: <strong style="color:{role_color};">{role}</strong> | Domain: <strong style="color:#f8fafc;">{domain}</strong></div>
     </div>
   </div>
 </div>
@@ -230,7 +266,7 @@ def render_app():
     user = st.session_state.user
 
     st.title("Enterprise Knowledge Assistant")
-    st.caption("Ask grounded questions over authorized organizational documents.")
+    st.caption("Secure role-aware enterprise document assistant")
 
     render_user_banner(user)
 
@@ -284,13 +320,7 @@ def render_app():
             st.subheader("Answer")
             st.markdown(
                 f"""
-<div style="
-    padding: 1rem;
-    border-radius: 16px;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    min-height: 180px;
-">
+<div class="answer-card">
 {st.session_state.last_answer}
 </div>
 """,
@@ -300,18 +330,12 @@ def render_app():
         with source_col:
             st.subheader("Sources")
             if st.session_state.last_sources:
-                for source in st.session_state.last_sources:
+                for idx, source in enumerate(st.session_state.last_sources, start=1):
                     st.markdown(
                         f"""
-<div style="
-    padding: 0.8rem;
-    border-radius: 14px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    margin-bottom: 0.6rem;
-    font-size: 0.95rem;
-">
-{source}
+<div class="source-card">
+<strong style="color:#f8fafc;">Source {idx}</strong><br>
+<span style="color:#cbd5e1;">{source}</span>
 </div>
 """,
                         unsafe_allow_html=True

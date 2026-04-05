@@ -50,8 +50,6 @@ Answer:
 
             if "page" in meta:
                 source_str += f" (Page {meta['page']})"
-
-            source_str += f" [Chunk {meta.get('chunk_id', '-')}]"
             sources.append(source_str)
 
         return {
