@@ -12,10 +12,13 @@ class LLMClient:
         Generate answer with sources.
         """
         normalized_documents = [self._normalize_document(doc) for doc in documents]
+        fallback_answer = (
+            "I could not find enough relevant information in the authorized documents for that question."
+        )
 
         if not normalized_documents:
             return {
-                "answer": "I could not find relevant information in the allowed documents for that question.",
+                "answer": fallback_answer,
                 "sources": []
             }
 
@@ -41,6 +44,11 @@ Answer:
 """
 
         response = self._generate_response(prompt, query, normalized_documents)
+        if self._is_insufficient_response(response):
+            return {
+                "answer": fallback_answer,
+                "sources": []
+            }
 
         sources = []
         for doc in normalized_documents:
@@ -72,6 +80,33 @@ Answer:
             return ollama_response
 
         return self._extractive_fallback(query, documents)
+
+    def _is_insufficient_response(self, response):
+        if not response:
+            return True
+
+        normalized = response.strip().lower()
+        fallback_markers = [
+            "i'm sorry",
+            "i am sorry",
+            "does not align with the provided context",
+            "doesn't align with the provided context",
+            "does not align with the context",
+            "doesn't align with the context",
+            "doesn't seem to be related",
+            "does not seem to be related",
+            "not appropriate to answer",
+            "based solely on the given information",
+            "provided context does not",
+            "context does not contain",
+            "based on the provided context",
+            "could not find relevant information",
+            "could not find enough relevant information",
+            "do not have enough information",
+            "not enough information",
+            "insufficient information",
+        ]
+        return any(marker in normalized for marker in fallback_markers)
 
     def _generate_with_ollama(self, prompt):
         try:
