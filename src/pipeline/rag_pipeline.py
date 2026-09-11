@@ -86,6 +86,15 @@ class RAGPipeline:
     def is_ready(self):
         return self.retriever is not None
 
+    def get_available_domains(self):
+        import os
+        if not os.path.isdir(self.settings.data_path):
+            return []
+        return [
+            name for name in os.listdir(self.settings.data_path)
+            if os.path.isdir(os.path.join(self.settings.data_path, name))
+        ]
+
     def ask(self, question: str, role: str = "client", domain: str | None = None):
         self.ensure_index()
         if self.retriever is None:
@@ -96,3 +105,4 @@ class RAGPipeline:
 
         documents = self.retriever.retrieve(question, role=role, domain=domain)
         return self.llm_client.generate_answer(question, documents)
+
