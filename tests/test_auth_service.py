@@ -1,3 +1,4 @@
+from datetime import timedelta
 import os
 import json
 import tempfile
@@ -51,6 +52,37 @@ class AuthServiceTests(unittest.TestCase):
             if os.path.exists(temp_file.name):
                 os.remove(temp_file.name)
 
+    def test_create_and_decode_jwt_token_valid(self):
+        payload = {"sub": "test_user", "role": "employee", "domain": "govt_policy"}
+        token = self.auth_service.create_access_token(payload)
+
+        decoded = self.auth_service.decode_access_token(token)
+        self.assertIsNotNone(decoded)
+        self.assertEqual(decoded["sub"], "test_user")
+        self.assertEqual(decoded["role"], "employee")
+        self.assertEqual(decoded["domain"], "govt_policy")
+        self.assertIn("exp", decoded)
+
+    def test_decode_jwt_token_expired(self):
+        payload = {"sub": "test_user", "role": "client"}
+        # Create token that expired 10 minutes ago
+        token = self.auth_service.create_access_token(
+            payload,
+            expires_delta=timedelta(minutes=-10)
+        )
+
+        decoded = self.auth_service.decode_access_token(token)
+        self.assertIsNone(decoded)
+
+    def test_decode_jwt_token_invalid_signature(self):
+        other_service = AuthService(jwt_secret_key="different-secret-key-for-testing-32bytes!")
+        token = other_service.create_access_token({"sub": "attacker"})
+
+        decoded = self.auth_service.decode_access_token(token)
+        self.assertIsNone(decoded)
+
+
 
 if __name__ == "__main__":
     unittest.main()
+

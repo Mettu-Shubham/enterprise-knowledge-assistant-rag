@@ -12,7 +12,10 @@ class Settings:
     embedding_local_only: bool = os.getenv("RAG_EMBEDDING_LOCAL_ONLY", "1") == "1"
     llm_model: str = os.getenv("RAG_LLM_MODEL", "qwen2.5:7b")
     retrieval_k: int = int(os.getenv("RAG_RETRIEVAL_K", "8"))
+    jwt_secret_key: str = os.getenv("RAG_JWT_SECRET_KEY", "dev-secret-key-change-in-prod-1234567890")
+    jwt_algorithm: str = os.getenv("RAG_JWT_ALGORITHM", "HS256")
+    jwt_expiration_minutes: int = int(os.getenv("RAG_JWT_EXPIRATION_MINUTES", "60"))
 
 
 def get_settings() -> Settings:
-    return Settings()
+    return Settings()

@@ -1,7 +1,10 @@
 from contextlib import asynccontextmanager
 
+from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer
 from pydantic import BaseModel
 
 from src.auth.auth_service import AuthService
@@ -11,7 +14,29 @@ from src.pipeline.rag_pipeline import RAGPipeline
 
 settings = get_settings()
 pipeline = RAGPipeline(settings)
-auth_service = AuthService(settings.users_path)
+auth_service = AuthService(
+    users_path=settings.users_path,
+    jwt_secret_key=settings.jwt_secret_key,
+    jwt_algorithm=settings.jwt_algorithm,
+    jwt_expiration_minutes=settings.jwt_expiration_minutes
+)
+security = HTTPBearer()
+
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    token = credentials.credentials
+    payload = auth_service.decode_access_token(token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    return {
+        "username": payload["sub"],
+        "role": payload.get("role", "client"),
+        "domain": payload.get("domain")
+    }
 
 
 @asynccontextmanager
@@ -38,8 +63,6 @@ class LoginRequest(BaseModel):
 
 
 class QueryRequest(BaseModel):
-    username: str
-    password: str
     question: str
 
 
@@ -69,19 +92,24 @@ def login(request: LoginRequest):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password.")
 
+    access_token = auth_service.create_access_token(
+        data={
+            "sub": user["username"],
+            "role": user["role"],
+            "domain": user.get("domain")
+        }
+    )
+
     return {
         "message": "Login successful",
+        "access_token": access_token,
+        "token_type": "bearer",
         "user": user
     }
 
 
 @app.post("/query")
-def query_rag(request: QueryRequest):
-    user = auth_service.authenticate(request.username, request.password)
-
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid username or password.")
-
+def query_rag(request: QueryRequest, current_user: dict = Depends(get_current_user)):
     if not pipeline.is_ready():
         pipeline.ensure_index()
 
@@ -93,16 +121,16 @@ def query_rag(request: QueryRequest):
 
     result = pipeline.ask(
         request.question,
-        role=user["role"],
-        domain=user.get("domain")
+        role=current_user["role"],
+        domain=current_user.get("domain")
     )
 
     return {
         "answer": result["answer"],
         "sources": result["sources"],
         "user": {
-            "username": user["username"],
-            "role": user["role"],
-            "domain": user.get("domain")
+            "username": current_user["username"],
+            "role": current_user["role"],
+            "domain": current_user.get("domain")
         }
-    }
+    }
