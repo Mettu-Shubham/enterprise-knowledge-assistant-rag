@@ -13,7 +13,8 @@ node_modules/
 # Optional local datasets
 data/WorldBank/
 data/document_registry.json
+data/eval_results.json
 
 # Keep auth config tracked
 !data/
-!data/users.json
+!data/users.json
